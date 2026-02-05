@@ -1,28 +1,246 @@
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <title>Website Offline</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Maintenance Mode</title>
+
   <style>
+    /* =====================
+       CSS VARIABLES
+    ====================== */
+    :root {
+      --bg: #0f172a;
+      --card: rgba(30, 41, 59, 0.85);
+      --text: #e5e7eb;
+      --muted: rgba(229, 231, 235, 0.7);
+      --accent: #6366f1;
+      --blur: 40px;
+    }
+
+    :root[data-time="day"] {
+      --accent: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      background: #0f172a;
-      color: #e5e7eb;
-      font-family: Arial, sans-serif;
+      margin: 0;
+      height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at top, #1e293b, var(--bg));
+      color: var(--text);
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      margin: 0;
-      text-align: center;
+      overflow: hidden;
     }
-    h1 { font-size: 36px; }
-    p { font-size: 18px; opacity: 0.8; }
+
+    /* =====================
+       BACKGROUND DEPTH
+    ====================== */
+    .bg-layer {
+      position: absolute;
+      inset: -50px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(99,102,241,0.15), transparent 40%),
+        radial-gradient(circle at 70% 60%, rgba(56,189,248,0.15), transparent 45%);
+      filter: blur(var(--blur));
+      transition: transform 0.2s ease-out;
+      z-index: 0;
+    }
+
+    /* =====================
+       MAIN CARD
+    ====================== */
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--card);
+      backdrop-filter: blur(16px);
+      border-radius: 20px;
+      padding: 48px 56px;
+      max-width: 520px;
+      text-align: center;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+      animation: breathe 8s ease-in-out infinite;
+      transition: transform 0.4s ease;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 36px;
+      letter-spacing: -0.02em;
+    }
+
+    p {
+      margin: 0;
+      font-size: 18px;
+      color: var(--muted);
+    }
+
+    /* =====================
+       FOOTER FLOAT
+    ====================== */
+    footer {
+      position: absolute;
+      bottom: 28px;
+      font-size: 13px;
+      opacity: 0.5;
+      animation: floatFooter 3s ease-in-out infinite;
+    }
+
+    /* =====================
+       ANIMATIONS
+    ====================== */
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.015); }
+    }
+
+    @keyframes floatFooter {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(6px); }
+    }
+
+    /* =====================
+       IDLE / FOCUS MODE
+    ====================== */
+    body.idle .card {
+      animation-duration: 14s;
+      opacity: 0.92;
+    }
+
+    /* =====================
+       LOW POWER / REDUCED MOTION
+    ====================== */
+    .low-power *,
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+
+    /* =====================
+       LANGUAGE HINT
+    ====================== */
+    .lang-hint {
+      margin-top: 18px;
+      font-size: 14px;
+      opacity: 0.75;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .lang-hint:hover {
+      opacity: 1;
+    }
   </style>
 </head>
+
 <body>
-  <div>
-    <h1>This website is currently offline</h1>
-    <p>We’ll be back soon.</p>
-  </div>
+
+  <div class="bg-layer"></div>
+
+  <main class="card" id="card">
+    <h1 id="title">Bu web sitesi şu anda bakımda</h1>
+    <p id="desc">Yakında tekrar yayında olacağız.</p>
+    <div class="lang-hint" id="langHint" hidden></div>
+  </main>
+
+  <footer>yusufdemir.com.tr</footer>
+
+  <script>
+    /* =====================
+       TIME AWARE UI
+    ====================== */
+    const hour = new Date().getHours();
+    document.documentElement.dataset.time =
+      hour >= 20 || hour < 6 ? 'night' : 'day';
+
+    /* =====================
+       DEPTH PARALLAX
+    ====================== */
+    const bg = document.querySelector('.bg-layer');
+    document.addEventListener('mousemove', e => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 30;
+      const y = (e.clientY / window.innerHeight - 0.5) * 30;
+      bg.style.transform = `translate(${x}px, ${y}px)`;
+    });
+
+    /* =====================
+       IDLE DETECTION
+    ====================== */
+    let idleTimer;
+    const setActive = () => {
+      document.body.classList.remove('idle');
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        document.body.classList.add('idle');
+      }, 4000);
+    };
+
+    ['mousemove', 'keydown', 'scroll', 'touchstart'].forEach(evt =>
+      document.addEventListener(evt, setActive)
+    );
+    setActive();
+
+    /* =====================
+       SMART CLIPBOARD
+    ====================== */
+    document.addEventListener('copy', e => {
+      e.clipboardData.setData(
+        'text/plain',
+        'Website temporarily offline — yusufdemir.com.tr'
+      );
+      e.preventDefault();
+    });
+
+    /* =====================
+       LOW POWER MODE
+    ====================== */
+    if (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) {
+      document.documentElement.classList.add('low-power');
+    }
+
+    /* =====================
+       LANGUAGE AWARE HINT
+    ====================== */
+    const langHint = document.getElementById('langHint');
+    const title = document.getElementById('title');
+    const desc = document.getElementById('desc');
+
+    const texts = {
+      tr: {
+        title: 'Bu web sitesi şu anda bakımda',
+        desc: 'Yakında tekrar yayında olacağız.',
+        hint: 'View this page in English'
+      },
+      en: {
+        title: 'This website is currently under maintenance',
+        desc: 'We’ll be back soon.',
+        hint: 'Sayfayı Türkçe görüntüle'
+      }
+    };
+
+    let currentLang = 'tr';
+    const browserLang = navigator.language.startsWith('tr') ? 'tr' : 'en';
+
+    if (browserLang !== currentLang) {
+      langHint.hidden = false;
+      langHint.textContent = texts[currentLang].hint;
+    }
+
+    langHint.addEventListener('click', () => {
+      currentLang = currentLang === 'tr' ? 'en' : 'tr';
+      title.textContent = texts[currentLang].title;
+      desc.textContent = texts[currentLang].desc;
+      langHint.textContent = texts[currentLang].hint;
+    });
+  </script>
 </body>
 </html>
